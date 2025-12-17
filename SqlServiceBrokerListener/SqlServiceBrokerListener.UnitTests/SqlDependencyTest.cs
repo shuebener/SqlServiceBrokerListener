@@ -1,13 +1,19 @@
 ﻿using System.Data;
-using System.Data.SqlClient;
+
+#if NETFRAMEWORK
+using Microsoft.Data.SqlClient;
+
 using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+using NUnit.Framework;
+
 using SqlServiceBrokerListener;
+
 using Assert = NUnit.Framework.Assert;
 
 namespace ServiceBrokerListener.UnitTests
 {
-    [TestClass]
+    [TestFixture]
     public class SqlDependencyTest
     {
         private const string TEST_DATABASE_NAME = "TestDatabase";
@@ -25,7 +31,7 @@ namespace ServiceBrokerListener.UnitTests
         private const string INSERT_FORMAT =
             "USE [" + TEST_DATABASE_NAME + "] INSERT INTO [{1}] VALUES({0})";
 
-        [TestInitialize]
+        [SetUp]
         public void TestSetup()
         {
             const string CreateDatabaseScript = @"
@@ -43,7 +49,7 @@ namespace ServiceBrokerListener.UnitTests
             ExecuteNonQuery(CreateTableScript, MASTER_CONNECTION_STRING);
         }
 
-        [TestCleanup]
+        [TearDown]
         public void TestCleanup()
         {
             const string DropTestDatabaseScript = @"
@@ -57,43 +63,43 @@ namespace ServiceBrokerListener.UnitTests
             ExecuteNonQuery(DropTestDatabaseScript, MASTER_CONNECTION_STRING);
         }
 
-        [TestMethod]
+        [Test]
         public void NotificationTestWith1Change()
         {
             NotificationTest(1);
         }
 
-        [TestMethod]
+        [Test]
         public void NotificationTestWith5Changes()
         {
             NotificationTest(5);
         }
 
-        [TestMethod]
+        [Test]
         public void NotificationTestWith10Changes()
         {
             NotificationTest(10);
         }
 
-        [TestMethod]
+        [Test]
         public void ResourcesReleasabilityTestWith1Changes_PROOF_OF_FAIL()
         {
             ResourcesReleasabilityTest(1);
         }
 
-        [TestMethod]
+        [Test]
         public void ResourcesReleasabilityTestWith5Changes_PROOF_OF_FAIL()
         {
             ResourcesReleasabilityTest(5);
         }
 
-        [TestMethod]
+        [Test]
         public void ResourcesReleasabilityTestWith10Changes_PROOF_OF_FAIL()
         {
             ResourcesReleasabilityTest(1);
         }
 
-        [TestMethod]
+        [Test]
         public void TwoTablesNotificationTest()
         {
             const int ChangesCountFirstTable = 5;
@@ -150,9 +156,9 @@ namespace ServiceBrokerListener.UnitTests
 
             MakeTableInsertChange(ChangesCountFirstTable);
             MakeTableInsertChange(ChangesCountSecondTable, TEST_TABLE_NAME_2);
-
-            Assert.AreEqual(ChangesCountFirstTable, changesReceived1);
-            Assert.AreEqual(ChangesCountSecondTable, changesReceived2);
+			
+			Assert.That(changesReceived1, Is.EqualTo(ChangesCountFirstTable));
+            Assert.That(changesReceived2, Is.EqualTo(ChangesCountSecondTable));
 
             SqlDependency.Stop(TEST_CONNECTION_STRING);
         }
@@ -171,19 +177,19 @@ namespace ServiceBrokerListener.UnitTests
                 NotificationTest(changesCount, false);
 
                 // Microsoft SqlDependency REMOVES queue and service after use.
-                Assert.AreEqual(sqlServicesCount, sqlConnection.GetServicesCount());
-                Assert.AreEqual(
+                Assert.That(sqlServicesCount, Is.EqualTo(sqlConnection.GetServicesCount()));
+                Assert.That(
                     sqlServiceQueuesCount,
-                    sqlConnection.GetServiceQueuesCount());
+                    Is.EqualTo(sqlConnection.GetServiceQueuesCount()));
 
                 // Microsoft SqlDependency KEEPS conversation group and endpoint in DB after use.
                 // This behavior leads to GIANT memory leaks in SQL Server.
-                Assert.AreNotEqual(
+                Assert.That(
                     sqlConversationGroupsCount,
-                    sqlConnection.GetConversationGroupsCount());
-                Assert.AreNotEqual(
+                    Is.Not.EqualTo(sqlConnection.GetConversationGroupsCount()));
+                Assert.That(
                     sqlConversationEndpointsCount,
-                    sqlConnection.GetUnclosedConversationEndpointsCount());
+                    Is.Not.EqualTo(sqlConnection.GetUnclosedConversationEndpointsCount()));
             }
         }
 
@@ -221,7 +227,7 @@ namespace ServiceBrokerListener.UnitTests
 
                 MakeTableInsertChange(changesCount);
 
-                if (useAssert) Assert.AreEqual(changesCount, changesReceived);
+                if (useAssert) Assert.That(changesReceived, Is.EqualTo(changesCount));
             }
 
             SqlDependency.Stop(TEST_CONNECTION_STRING);
@@ -252,3 +258,19 @@ namespace ServiceBrokerListener.UnitTests
         }
     }
 }
+#else
+using NUnit.Framework;
+
+namespace ServiceBrokerListener.UnitTests
+{
+    [TestFixture]
+    public class SqlDependencyTest
+    {
+        [Test]
+        public void SqlDependency_NotSupported_OnNetCore()
+        {
+            Assert.Ignore("SqlDependency is not supported on .NET Core/.NET (net8+) and this test runs only on .NET Framework.");
+        }
+    }
+}
+#endif

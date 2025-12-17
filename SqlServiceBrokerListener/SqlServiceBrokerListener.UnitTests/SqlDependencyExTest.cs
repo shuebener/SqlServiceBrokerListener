@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Data;
-using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading;
+
+using Microsoft.Data.SqlClient;
+
 using NUnit.Framework;
+
 using SqlServiceBrokerListener;
 
 namespace ServiceBrokerListener.UnitTests
@@ -243,7 +246,7 @@ namespace ServiceBrokerListener.UnitTests
             }
             catch (SqlException) { errorReceived = true; }
 
-            Assert.AreEqual(true, errorReceived);
+            Assert.That(errorReceived, Is.EqualTo(true));
 
             // It is impossible to start notification without CREATE PROCEDURE permission.
             ExecuteNonQuery("USE [TestDatabase] GRANT CREATE PROCEDURE TO [TempUser];", MASTER_CONNECTION_STRING);
@@ -258,7 +261,7 @@ namespace ServiceBrokerListener.UnitTests
             }
             catch (SqlException) { errorReceived = true; }
 
-            Assert.AreEqual(false, errorReceived);
+            Assert.That(errorReceived, Is.EqualTo(false));
 
             // There is supposed to be no exceptions with admin rights.
             using (SqlDependencyEx test = new SqlDependencyEx(
@@ -289,7 +292,7 @@ namespace ServiceBrokerListener.UnitTests
             }
             catch (SqlException) { errorReceived = true; }
 
-            Assert.AreEqual(true, errorReceived);
+            Assert.That(errorReceived, Is.EqualTo(true));
 
             // Service broker supposed to be configured automatically with MASTER connection string.
             NotificationTest(10, connStr: MASTER_CONNECTION_STRING);
@@ -312,16 +315,16 @@ namespace ServiceBrokerListener.UnitTests
                 dep1.Start();
                 
                 // Make sure db has been got 1 dependency object.
-                Assert.AreEqual(1, getDbDepCount());
+                Assert.That(getDbDepCount(), Is.EqualTo(1));
 
                 dep2.Start();
 
                 // Make sure db has been got 2 dependency object.
-                Assert.AreEqual(2, getDbDepCount());
+                Assert.That(getDbDepCount(), Is.EqualTo(2));
             }
 
             // Make sure db has no any dependency objects.
-            Assert.AreEqual(0, getDbDepCount());
+            Assert.That(getDbDepCount(), Is.EqualTo(0));
         }
 
         [Test]
@@ -348,16 +351,16 @@ namespace ServiceBrokerListener.UnitTests
 
             dep1.Start();
             // Make sure db has been got 1 dependency object.
-            Assert.AreEqual(1, getDbDepCount());
+            Assert.That(getDbDepCount(), Is.EqualTo(1));
             dep2.Start();
             // Make sure db has been got 2 dependency object.
-            Assert.AreEqual(2, getDbDepCount());
+            Assert.That(getDbDepCount(), Is.EqualTo(2));
 
             // Forced db cleaning
             SqlDependencyEx.CleanDatabase(TEST_CONNECTION_STRING, TEST_DATABASE_NAME);
 
             // Make sure db has no any dependency objects.
-            Assert.AreEqual(0, getDbDepCount());
+            Assert.That(getDbDepCount(), Is.EqualTo(0));
 
             dep1.Dispose();
             dep2.Dispose();
@@ -457,15 +460,15 @@ namespace ServiceBrokerListener.UnitTests
                 }
             }
 
-            Assert.AreEqual(5, table1DeletesReceived);
-            Assert.AreEqual(0, table1InsertsReceived);
-            Assert.AreEqual(5, table1TotalNotifications);
-            Assert.AreEqual(5, table1TotalDeleted);
+            Assert.That(table1DeletesReceived, Is.EqualTo(5));
+            Assert.That(table1InsertsReceived, Is.EqualTo(0));
+            Assert.That(table1TotalNotifications, Is.EqualTo(5));
+            Assert.That(table1TotalDeleted, Is.EqualTo(5));
 
-            Assert.AreEqual(3, table2InsertsReceived);
-            Assert.AreEqual(0, table2DeletesReceived);
-            Assert.AreEqual(3, table2TotalNotifications);
-            Assert.AreEqual(12, table2TotalInserted);
+            Assert.That(table2InsertsReceived, Is.EqualTo(3));
+            Assert.That(table2DeletesReceived, Is.EqualTo(0));
+            Assert.That(table2TotalNotifications, Is.EqualTo(3));
+            Assert.That(table2TotalInserted, Is.EqualTo(12));
         }
 
         [Test]
@@ -512,10 +515,10 @@ namespace ServiceBrokerListener.UnitTests
                 Thread.Sleep(3000);
             }
 
-            Assert.AreEqual(0, table1DeletesReceived);
-            Assert.AreEqual(3, table1InsertsReceived);
-            Assert.AreEqual(3, table1TotalNotifications);
-            Assert.AreEqual(0, table1TotalDeleted);
+            Assert.That(table1DeletesReceived, Is.EqualTo(0));
+            Assert.That(table1InsertsReceived, Is.EqualTo(3));
+            Assert.That(table1TotalNotifications, Is.EqualTo(3));
+            Assert.That(table1TotalDeleted, Is.EqualTo(0));
         }
 
         [Test]
@@ -562,10 +565,10 @@ namespace ServiceBrokerListener.UnitTests
                 Thread.Sleep(3000);
             }
 
-            Assert.AreEqual(0, table1DeletesReceived);
-            Assert.AreEqual(3, table1InsertsReceived);
-            Assert.AreEqual(3, table1TotalNotifications);
-            Assert.AreEqual(0, table1TotalDeleted);
+            Assert.That(table1DeletesReceived, Is.EqualTo(0));
+            Assert.That(table1InsertsReceived, Is.EqualTo(3));
+            Assert.That(table1TotalNotifications, Is.EqualTo(3));
+            Assert.That(table1TotalDeleted, Is.EqualTo(0));
         }
 
         [Test]
@@ -612,10 +615,10 @@ namespace ServiceBrokerListener.UnitTests
                 Thread.Sleep(3000);
             }
 
-            Assert.AreEqual(0, table1DeletesReceived);
-            Assert.AreEqual(3, table1InsertsReceived);
-            Assert.AreEqual(3, table1TotalNotifications);
-            Assert.AreEqual(0, table1TotalDeleted);
+            Assert.That(table1DeletesReceived, Is.EqualTo(0));
+            Assert.That(table1InsertsReceived, Is.EqualTo(3));
+            Assert.That(table1TotalNotifications, Is.EqualTo(3));
+            Assert.That(table1TotalDeleted, Is.EqualTo(0));
         }
 
         [Test]
@@ -662,10 +665,10 @@ namespace ServiceBrokerListener.UnitTests
                 Thread.Sleep(3000);
             }
 
-            Assert.AreEqual(0, table1DeletesReceived);
-            Assert.AreEqual(3, table1InsertsReceived);
-            Assert.AreEqual(3, table1TotalNotifications);
-            Assert.AreEqual(0, table1TotalDeleted);
+            Assert.That(table1DeletesReceived, Is.EqualTo(0));
+            Assert.That(table1InsertsReceived, Is.EqualTo(3));
+            Assert.That(table1TotalNotifications, Is.EqualTo(3));
+            Assert.That(table1TotalDeleted, Is.EqualTo(0));
         }
 
         [Test]
@@ -695,12 +698,11 @@ namespace ServiceBrokerListener.UnitTests
                     sqlDependency.Start();
 
                     // Make sure we've created one queue, sevice, trigger and two procedures.
-                    Assert.AreEqual(sqlServicesCount + 1, sqlConnection.GetServicesCount());
-                    Assert.AreEqual(
-                        sqlServiceQueuesCount + 1,
-                        sqlConnection.GetServiceQueuesCount());
-                    Assert.AreEqual(sqlTriggersCount + 1, sqlConnection.GetTriggersCount());
-                    Assert.AreEqual(sqlProceduresCount + 2, sqlConnection.GetProceduresCount());
+                    Assert.That(sqlConnection.GetServicesCount(), Is.EqualTo(sqlServicesCount + 1));
+                    Assert.That(
+                        sqlConnection.GetServiceQueuesCount(), Is.EqualTo(sqlServiceQueuesCount + 1));
+                    Assert.That(sqlConnection.GetTriggersCount(), Is.EqualTo(sqlTriggersCount + 1));
+                    Assert.That(sqlConnection.GetProceduresCount(), Is.EqualTo(sqlProceduresCount + 2));
 
                     MakeTableInsertDeleteChanges(changesCount);
 
@@ -709,18 +711,15 @@ namespace ServiceBrokerListener.UnitTests
                 }
 
                 // Make sure we've released all resources.
-                Assert.AreEqual(sqlServicesCount, sqlConnection.GetServicesCount());
-                Assert.AreEqual(
-                    sqlConversationGroupsCount,
-                    sqlConnection.GetConversationGroupsCount());
-                Assert.AreEqual(
-                    sqlServiceQueuesCount,
-                    sqlConnection.GetServiceQueuesCount());
-                Assert.AreEqual(
-                    sqlConversationEndpointsCount,
-                    sqlConnection.GetUnclosedConversationEndpointsCount());
-                Assert.AreEqual(sqlTriggersCount, sqlConnection.GetTriggersCount());
-                Assert.AreEqual(sqlProceduresCount, sqlConnection.GetProceduresCount());
+                Assert.That(sqlConnection.GetServicesCount(), Is.EqualTo(sqlServicesCount));
+                Assert.That(
+                    sqlConnection.GetConversationGroupsCount(), Is.EqualTo(sqlConversationGroupsCount));
+                Assert.That(
+                    sqlConnection.GetServiceQueuesCount(), Is.EqualTo(sqlServiceQueuesCount));
+                Assert.That(
+                    sqlConnection.GetUnclosedConversationEndpointsCount(), Is.EqualTo(sqlConversationEndpointsCount));
+                Assert.That(sqlConnection.GetTriggersCount(), Is.EqualTo(sqlTriggersCount));
+                Assert.That(sqlConnection.GetProceduresCount(), Is.EqualTo(sqlProceduresCount));
             }
         }
 
@@ -746,7 +745,7 @@ namespace ServiceBrokerListener.UnitTests
                 Thread.Sleep(1000);
             }
 
-            Assert.AreEqual(changesCount, changesReceived);
+            Assert.That(changesReceived, Is.EqualTo(changesCount));
         }
 
         private static void NotificationTypeTest(int insertsCount)
@@ -815,8 +814,8 @@ namespace ServiceBrokerListener.UnitTests
                 Thread.Sleep(1000);
             }
 
-            Assert.AreEqual(expectedElementsInDetails, elementsInDetailsCount);
-            Assert.AreEqual(notificationTypes.Length, changesReceived);
+            Assert.That(elementsInDetailsCount, Is.EqualTo(expectedElementsInDetails));
+            Assert.That(changesReceived, Is.EqualTo(notificationTypes.Length));
         }
 
         private static void DetailsTest(int insertsCount)
@@ -853,8 +852,8 @@ namespace ServiceBrokerListener.UnitTests
                 Thread.Sleep(1000);
             }
 
-            Assert.AreEqual(insertsCount * 2, elementsInDetailsCount);
-            Assert.AreEqual(3, changesReceived);
+            Assert.That(elementsInDetailsCount, Is.EqualTo(insertsCount * 2));
+            Assert.That(changesReceived, Is.EqualTo(3));
         }
 
         private void NoDetailsTest(
@@ -871,8 +870,8 @@ namespace ServiceBrokerListener.UnitTests
             {
                 sqlDependency.TableChanged += (o, e) =>
                 {
-                    Assert.AreEqual(SqlDependencyEx.NotificationTypes.None, e.NotificationType);
-                    Assert.AreEqual(0, e.Data.Elements().Count());
+                    Assert.That(e.NotificationType, Is.EqualTo(SqlDependencyEx.NotificationTypes.None));
+                    Assert.That(e.Data.Elements().Count(), Is.EqualTo(0));
 
                     changesReceived++;
                 };
@@ -885,7 +884,7 @@ namespace ServiceBrokerListener.UnitTests
                 Thread.Sleep(1000);
             }
 
-            Assert.AreEqual(changesCount, changesReceived);
+            Assert.That(changesReceived, Is.EqualTo(changesCount));
         }
 
         private static void MakeChunkedInsertDeleteUpdate(int changesCount)

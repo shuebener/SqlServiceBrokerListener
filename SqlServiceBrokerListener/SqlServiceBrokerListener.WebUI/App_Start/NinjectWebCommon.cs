@@ -1,5 +1,6 @@
-[assembly: WebActivator.PreApplicationStartMethod(typeof(ServiceBrokerListener.WebUI.App_Start.NinjectWebCommon), "Start")]
-[assembly: WebActivator.ApplicationShutdownMethodAttribute(typeof(ServiceBrokerListener.WebUI.App_Start.NinjectWebCommon), "Stop")]
+using WebActivatorEx;
+[assembly: PreApplicationStartMethod(typeof(ServiceBrokerListener.WebUI.App_Start.NinjectWebCommon), "Start")]
+[assembly: ApplicationShutdownMethodAttribute(typeof(ServiceBrokerListener.WebUI.App_Start.NinjectWebCommon), "Stop")]
 
 namespace ServiceBrokerListener.WebUI.App_Start
 {
@@ -10,6 +11,7 @@ namespace ServiceBrokerListener.WebUI.App_Start
 
     using Ninject;
     using Ninject.Web.Common;
+    using Ninject.Web.Common.WebHost;
 
     using ServiceBrokerListener.WebUI.Infrastructure;
 

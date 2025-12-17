@@ -1,70 +1,95 @@
-# ServiceBrokerListener
-Cross-platform .NET 4.0 (C# 4.0) and .NET Core compatible component which receives SQL Server table changes into your .net code.
+# SqlServiceBrokerListener
+
+Cross-platform SQL Server Service Broker listener that streams table change notifications into your .NET code.
+
+- Targets: .NET Framework 4.7.2 and .NET 8/9/10
+- Client provider: Microsoft.Data.SqlClient
+- Original concept based on ServiceBrokerListener (SqlDependencyEx)
 
 Take a look how it works: http://sbl.azurewebsites.net
 
+# Install
+
+Use NuGet to add the library to your project:
+
+- Package Manager Console
+  Install-Package SqlServiceBrokerListener
+
+- .NET CLI
+  dotnet add package SqlServiceBrokerListener
+
 # How To Use
 
-1. Copy [SqlDependecyEx](https://github.com/dyatchenko/ServiceBrokerListener/blob/master/ServiceBrokerListener/ServiceBrokerListener.Domain/SqlDependencyEx.cs) class from `ServiceBrokerListener.Domain` project into your solution.
-2. Make sure that Service Broker is enabled for your database.
+1. Ensure that Service Broker is enabled for your database.
     
+    ```sql
+    ALTER DATABASE test SET ENABLE_BROKER;
+    
+    -- For SQL Express (example)
+    ALTER AUTHORIZATION ON DATABASE::test TO sa;
     ```
-    ALTER DATABASE test SET ENABLE_BROKER
     
-    -- For SQL Express
-    ALTER AUTHORIZATION ON DATABASE::test TO userTest
-    ```
-    
-3. Use the class as in example below:
+2. Create a listener and handle notifications:
 
-    ```
-    // See constructor optional parameters to configure it according to your needs
+    ```csharp
+    using SqlServiceBrokerListener;
+    
     var listener = new SqlDependencyEx(connectionString, "YourDatabase", "YourTable");
     
-    // e.Data contains actual changed data in the XML format
-    listener.TableChanged += (o, e) => Console.WriteLine("Your table was changed!");
+    // e.Data contains changed rows in XML (inserted/deleted)
+    listener.TableChanged += (o, e) =>
+    {
+        Console.WriteLine($"Notification: {e.NotificationType}");
+        Console.WriteLine(e.Data?.ToString());
+    };
     
-    // After you call the Start method you will receive table notifications with 
-    // the actual changed data in the XML format
     listener.Start();
-    
-    // ... Your code is here 
-    
-    // Don't forget to stop the listener somewhere!
+    // ... your code ...
     listener.Stop();
     ```
 
-4. Enjoy!
-
 # How to use for multiple tables
 
-All you need to do is to create multiple listeners with different identities as shown below:
+Create multiple listeners with different identities:
 
-    var listener1 = new SqlDependencyEx(connectionString, "YourDatabase", "YourTable1", identity: 1);
-    var listener2 = new SqlDependencyEx(connectionString, "YourDatabase", "YourTable2", identity: 2);
+```csharp
+var listener1 = new SqlDependencyEx(connectionString, "YourDatabase", "YourTable1", identity: 1);
+var listener2 = new SqlDependencyEx(connectionString, "YourDatabase", "YourTable2", identity: 2);
+```
     
 # How to use in multiple apps
 
-You **must** create listeners with **unique** identities for each app. So, only one listener with a specific identity should exist at the moment. This is made in order to make sure that resources are cleaned up. For more information and best practices see @cdfell [comment](https://github.com/dyatchenko/ServiceBrokerListener/issues/29#issuecomment-241826532) and [this](https://github.com/dyatchenko/ServiceBrokerListener/issues/29#issuecomment-241943608) answer.
+Use unique identities per app instance to ensure proper cleanup:
 
 Application 1:
 
-    // identities are different
-    var listener = new SqlDependencyEx(connectionString, "YourDatabase", "YourTable", identity: 1);
+```csharp
+var listener = new SqlDependencyEx(connectionString, "YourDatabase", "YourTable", identity: 1);
+```
     
 Application 2:
 
-    // identities are different
-    var listener = new SqlDependencyEx(connectionString, "YourDatabase", "YourTable", identity: 2);
-    
+```csharp
+var listener = new SqlDependencyEx(connectionString, "YourDatabase", "YourTable", identity: 2);
+```
+
 # How to track UPDATEs only
 
-The `listenerType` constructor parameter configures `SqlDependencyEx` to fire an event for
-different notification types (can fire on INSERT, UPDATE, DELETE separately or together)
+Configure the `listenerType` constructor parameter to fire an event only for specific change types:
 
-    var listener = new SqlDependencyEx(connectionString, "YourDatabase",
-                 "YourTable1", listenerType: SqlDependencyEx.NotificationTypes.Update);
-    
-# Licence
+```csharp
+var listener = new SqlDependencyEx(
+    connectionString,
+    "YourDatabase",
+    "YourTable",
+    listenerType: SqlDependencyEx.NotificationTypes.Update);
+```
 
-[MIT](LICENSE)
+# Notes
+
+- Requires Service Broker to be enabled and the database user to have permissions to create procedures, queues, services, and triggers used by the listener.
+- For high-throughput scenarios you can disable details: `receiveDetails: false` to get lightweight notifications.
+
+# License
+
+MIT
