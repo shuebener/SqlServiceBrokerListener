@@ -9,9 +9,15 @@ on:
     types: [closed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      publish_prerelease_to_nuget:
+        description: Also push the pre-release (non-main branch) to nuget.org
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  id-token: write # OIDC token for nuget.org Trusted Publishing
 
 concurrency:
   group: release-${{ github.ref }}
@@ -28,6 +34,7 @@ jobs:
       PROJECT: SqlServiceBrokerListener/SqlServiceBrokerListener/SqlServiceBrokerListener.csproj
       LIB_NAME: SqlServiceBrokerListener
       RELEASE_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      PUBLISH_PRERELEASE_TO_NUGET: ${{ inputs.publish_prerelease_to_nuget == true }}
       GH_TOKEN: ${{ github.token }}
 
     steps:
@@ -94,6 +101,24 @@ jobs:
       - name: Pack
         run: dotnet pack "$PROJECT" -c Release -o artifacts -p:Version=${{ steps.version.outputs.version }}
 
+      # Stable releases (merged PR into main) are always pushed; pre-releases only when requested on a manual run.
+      # Trusted Publishing policy on nuget.org: release.yml.
+      # The temporary API key is valid for one hour, so it is requested right before the push.
+      - name: NuGet login (Trusted Publishing)
+        if: steps.version.outputs.is_prerelease == 'false' || inputs.publish_prerelease_to_nuget == true
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Push to nuget.org
+        if: steps.version.outputs.is_prerelease == 'false' || inputs.publish_prerelease_to_nuget == true
+        run: >
+          dotnet nuget push "artifacts/${{ env.LIB_NAME }}.${{ steps.version.outputs.version }}.nupkg"
+          --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
       - name: Create GitHub release
         shell: pwsh
         env:
@@ -111,4 +136,8 @@ jobs:
             @flags
           if ($LASTEXITCODE -ne 0) { throw "Creating release $tag failed" }
           "### Released $tag" >> $env:GITHUB_STEP_SUMMARY
-          "NuGet packages were attached to the GitHub release. They were **not** pushed to nuget.org." >> $env:GITHUB_STEP_SUMMARY
+          if ($env:IS_PRERELEASE -eq 'true' -and $env:PUBLISH_PRERELEASE_TO_NUGET -ne 'true') {
+            "NuGet packages were attached to the GitHub release. This pre-release was **not** pushed to nuget.org." >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            "Package pushed to nuget.org and attached to the GitHub release." >> $env:GITHUB_STEP_SUMMARY
+          }
