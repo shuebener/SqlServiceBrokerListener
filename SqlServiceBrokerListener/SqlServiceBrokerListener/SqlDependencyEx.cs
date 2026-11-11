@@ -514,6 +514,12 @@ namespace SqlServiceBrokerListener
 
         public bool Active { get; private set; }
 
+        /// <summary>
+        /// The exception that terminated the notification loop, or null if the loop is running or was stopped
+        /// through <see cref="Stop"/>. Read it from the <see cref="NotificationProcessStopped"/> handler.
+        /// </summary>
+        public Exception LastError { get; private set; }
+
         public event EventHandler<TableChangedEventArgs> TableChanged;
 
         public event EventHandler NotificationProcessStopped;
@@ -527,6 +533,10 @@ namespace SqlServiceBrokerListener
                 NotificationTypes.Insert | NotificationTypes.Update | NotificationTypes.Delete,
             bool receiveDetails = true, int identity = 1)
         {
+            ValidateIdentifier(databaseName, nameof(databaseName), strict: false);
+            ValidateIdentifier(tableName, nameof(tableName), strict: false);
+            ValidateIdentifier(schemaName, nameof(schemaName), strict: true);
+
             this.ConnectionString = connectionString;
             this.DatabaseName = databaseName;
             this.TableName = tableName;
@@ -550,6 +560,7 @@ namespace SqlServiceBrokerListener
             // This situation leads to notification absence in some cases
             this.Stop();
 
+            this.LastError = null;
             this.InstallNotification();
 
             _threadSource = new CancellationTokenSource();
@@ -560,23 +571,27 @@ namespace SqlServiceBrokerListener
 
         public void Stop()
         {
-            UninstallNotification();
+            var threadSource = _threadSource;
+            _threadSource = null;
 
-            lock (ActiveEntities)
-                if (ActiveEntities.Contains(Identity)) ActiveEntities.Remove(Identity);
-
-            if ((_threadSource == null) || (_threadSource.Token.IsCancellationRequested))
+            try
             {
-                return;
-            }
+                // Cancel before uninstalling: dropping the queue makes the pending RECEIVE fail,
+                // and the loop uses the token to tell this requested stop from a real error.
+                if (threadSource != null)
+                {
+                    try { threadSource.Cancel(); }
+                    finally { threadSource.Dispose(); }
+                }
 
-            if (!_threadSource.Token.CanBeCanceled)
+                UninstallNotification();
+            }
+            finally
             {
-                return;
+                // Always release the identity, even if the uninstall fails, so the listener can be started again.
+                lock (ActiveEntities)
+                    ActiveEntities.Remove(Identity);
             }
-
-            _threadSource.Cancel();
-            _threadSource.Dispose();
         }
 
         public void Dispose()
@@ -595,6 +610,8 @@ namespace SqlServiceBrokerListener
             {
                 throw new ArgumentNullException("database");
             }
+
+            ValidateIdentifier(database, nameof(database), strict: false);
 
             List<string> result = new List<string>();
 
@@ -618,16 +635,55 @@ namespace SqlServiceBrokerListener
 
         public static void CleanDatabase(string connectionString, string database)
         {
+            ValidateIdentifier(database, nameof(database), strict: false);
+
             ExecuteNonQuery(
                 string.Format(SQL_FORMAT_FORCED_DATABASE_CLEANING, database),
                 connectionString);
         }
 
+        /// <summary>
+        /// Validates a name before it is embedded into the T-SQL templates, which use it inside brackets,
+        /// inside string literals and, for schema names, as a bare identifier.
+        /// </summary>
+        /// <param name="value">The name to validate.</param>
+        /// <param name="parameterName">The parameter name reported in the exception.</param>
+        /// <param name="strict">True for names used as bare identifiers: only regular identifier characters are allowed.</param>
+        private static void ValidateIdentifier(string value, string parameterName, bool strict)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException(parameterName);
+            }
+
+            if (value.Length == 0 || value.Length > 128)
+            {
+                throw new ArgumentException("The name must be between 1 and 128 characters long.", parameterName);
+            }
+
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                bool valid = strict
+                    ? char.IsLetter(c) || c == '_' || (i > 0 && (char.IsDigit(c) || c == '@' || c == '#' || c == '$'))
+                    : !char.IsControl(c) && c != '\'' && c != '[' && c != ']';
+
+                if (!valid)
+                {
+                    throw new ArgumentException(
+                        string.Format("The name contains the invalid character '{0}' at position {1}.", c, i),
+                        parameterName);
+                }
+            }
+        }
+
         private void NotificationLoop(object input)
         {
+            var token = (CancellationToken)input;
+
             try
             {
-                while (true)
+                while (!token.IsCancellationRequested)
                 {
                     var message = ReceiveEvent();
                     Active = true;
@@ -637,9 +693,13 @@ namespace SqlServiceBrokerListener
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // ignored
+                // A requested stop drops the queue and makes the pending RECEIVE fail; that is not an error.
+                if (!token.IsCancellationRequested)
+                {
+                    LastError = ex;
+                }
             }
             finally
             {

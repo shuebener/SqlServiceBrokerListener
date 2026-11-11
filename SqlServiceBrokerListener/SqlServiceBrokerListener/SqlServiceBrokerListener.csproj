@@ -16,7 +16,6 @@
 	</PropertyGroup>
 	
 	<PropertyGroup>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<RepositoryType>git</RepositoryType>
 		<PackageProjectUrl>https://github.com/shuebener/SqlServiceBrokerListener</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/shuebener/SqlServiceBrokerListener.git</RepositoryUrl>

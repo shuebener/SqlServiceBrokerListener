@@ -17,14 +17,42 @@ namespace ServiceBrokerListener.UnitTests
 	[TestFixture]
     public class SqlDependencyExTest
     {
-        private const string MASTER_CONNECTION_STRING =
-            "Data Source=(local);Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True";
+		// Integration tests create and drop TestDatabase and the login TempLogin on the target server.
+		// Set SBL_TEST_SERVER, SBL_TEST_USER and SBL_TEST_PASSWORD (sysadmin-level login) to run them.
+		private static readonly string DATA_SOURCE = Environment.GetEnvironmentVariable("SBL_TEST_SERVER") ?? string.Empty;
+		private static readonly string DB_USER = Environment.GetEnvironmentVariable("SBL_TEST_USER") ?? string.Empty;
+		private static readonly string DB_PASSWORD = Environment.GetEnvironmentVariable("SBL_TEST_PASSWORD") ?? string.Empty;
 
-        private const string TEST_CONNECTION_STRING =
-            "Data Source=(local);Initial Catalog=TestDatabase;TrustServerCertificate=True;User Id=TempLogin;Password=8fdKJl3$nlNv3049jsKK;";
+		// Throwaway login that the tests create and drop themselves.
+		private const string TEMP_LOGIN_PASSWORD = "8fdKJl3$nlNv3049jsKK";
 
-        private const string ADMIN_TEST_CONNECTION_STRING =
-            "Data Source=(local);Initial Catalog=TestDatabase;Integrated Security=True;TrustServerCertificate=True";
+		private static readonly string MASTER_CONNECTION_STRING =
+			BuildConnectionString("master", DB_USER, DB_PASSWORD);
+
+        private static readonly string TEST_CONNECTION_STRING =
+            BuildConnectionString("TestDatabase", "TempLogin", TEMP_LOGIN_PASSWORD);
+
+        private static readonly string ADMIN_TEST_CONNECTION_STRING =
+            BuildConnectionString("TestDatabase", DB_USER, DB_PASSWORD);
+
+        private static string BuildConnectionString(string database, string user, string password) =>
+            new SqlConnectionStringBuilder
+            {
+                DataSource = DATA_SOURCE,
+                InitialCatalog = database,
+                UserID = user,
+                Password = password,
+                TrustServerCertificate = true
+            }.ConnectionString;
+
+        [OneTimeSetUp]
+        public void RequireTestServer()
+        {
+            if (string.IsNullOrEmpty(DATA_SOURCE) || string.IsNullOrEmpty(DB_USER) || string.IsNullOrEmpty(DB_PASSWORD))
+            {
+                Assert.Ignore("SBL_TEST_SERVER, SBL_TEST_USER and SBL_TEST_PASSWORD must be set to run the integration tests.");
+            }
+        }
 
         private const string INSERT_FORMAT =
             "USE [TestDatabase] INSERT INTO temp.[TestTable] (TestField) VALUES({0})";
@@ -55,9 +83,9 @@ namespace ServiceBrokerListener.UnitTests
                 -- FOR SQL Express
                 ALTER AUTHORIZATION ON DATABASE::[TestDatabase] TO [sa]
                 ALTER DATABASE [TestDatabase] SET TRUSTWORTHY ON; ";
-            const string CreateUserScript = @"
+            const string CreateUserScript = $@"
                 CREATE LOGIN TempLogin 
-                WITH PASSWORD = '8fdKJl3$nlNv3049jsKK', DEFAULT_DATABASE=TestDatabase;
+                WITH PASSWORD = '{TEMP_LOGIN_PASSWORD}', DEFAULT_DATABASE=TestDatabase;
                 
                 USE [TestDatabase];
                 CREATE USER TempUser FOR LOGIN TempLogin;
@@ -723,8 +751,9 @@ namespace ServiceBrokerListener.UnitTests
         private void NotificationTest(
             int changesCount,
             int changesDelayInSec = 0,
-            string connStr = TEST_CONNECTION_STRING)
+            string? connStr = null)
         {
+            connStr ??= TEST_CONNECTION_STRING;
             int changesReceived = 0;
 
             using (SqlDependencyEx sqlDependency = new SqlDependencyEx(
@@ -856,8 +885,9 @@ namespace ServiceBrokerListener.UnitTests
         private void NoDetailsTest(
             int changesCount,
             int changesDelayInSec = 0,
-            string connStr = TEST_CONNECTION_STRING)
+            string? connStr = null)
         {
+            connStr ??= TEST_CONNECTION_STRING;
             int changesReceived = 0;
 
             using (SqlDependencyEx sqlDependency = new SqlDependencyEx(

@@ -5,8 +5,6 @@ VisualStudioVersion = 18.12.12405.243 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlServiceBrokerListener.UnitTests", "SqlServiceBrokerListener.UnitTests\SqlServiceBrokerListener.UnitTests.csproj", "{B51D840E-1FF5-4C35-86C9-DB53FA829E41}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlServiceBrokerListener.WebUI", "SqlServiceBrokerListener.WebUI\SqlServiceBrokerListener.WebUI.csproj", "{E3C28555-5AD8-4689-B93D-26EB4150757F}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlServiceBrokerListener", "SqlServiceBrokerListener\SqlServiceBrokerListener.csproj", "{DDA3ADD7-2357-4F22-A823-7077E7FDCF3C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlServiceBrokerListener.Tablelistener.Core", "SqlServiceBrokerListener.Tablelistener.Core\SqlServiceBrokerListener.Tablelistener.Core.csproj", "{412AAB08-0D31-42FE-ACC3-F3EED28F05EE}"
@@ -25,10 +23,6 @@ Global
 		{B51D840E-1FF5-4C35-86C9-DB53FA829E41}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B51D840E-1FF5-4C35-86C9-DB53FA829E41}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B51D840E-1FF5-4C35-86C9-DB53FA829E41}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E3C28555-5AD8-4689-B93D-26EB4150757F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E3C28555-5AD8-4689-B93D-26EB4150757F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E3C28555-5AD8-4689-B93D-26EB4150757F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E3C28555-5AD8-4689-B93D-26EB4150757F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DDA3ADD7-2357-4F22-A823-7077E7FDCF3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{DDA3ADD7-2357-4F22-A823-7077E7FDCF3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DDA3ADD7-2357-4F22-A823-7077E7FDCF3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -43,7 +37,6 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{B51D840E-1FF5-4C35-86C9-DB53FA829E41} = {529D454C-6238-4219-8B67-4D62E2911D5D}
-		{E3C28555-5AD8-4689-B93D-26EB4150757F} = {A8DF5BB0-A2F9-4FEA-AA96-CE00A2C610E6}
 		{412AAB08-0D31-42FE-ACC3-F3EED28F05EE} = {A8DF5BB0-A2F9-4FEA-AA96-CE00A2C610E6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
