@@ -1,8 +1,5 @@
-﻿using System;
-using System.Data;
-using System.Linq;
+﻿using System.Data;
 using System.Text;
-using System.Threading;
 
 using Microsoft.Data.SqlClient;
 
@@ -21,13 +18,13 @@ namespace ServiceBrokerListener.UnitTests
     public class SqlDependencyExTest
     {
         private const string MASTER_CONNECTION_STRING =
-            "Data Source=(local);Initial Catalog=master;Integrated Security=True";
+            "Data Source=(local);Initial Catalog=master;Integrated Security=True;TrustServerCertificate=True";
 
         private const string TEST_CONNECTION_STRING =
-            "Data Source=(local);Initial Catalog=TestDatabase;User Id=TempLogin;Password=8fdKJl3$nlNv3049jsKK;";
+            "Data Source=(local);Initial Catalog=TestDatabase;TrustServerCertificate=True;User Id=TempLogin;Password=8fdKJl3$nlNv3049jsKK;";
 
         private const string ADMIN_TEST_CONNECTION_STRING =
-            "Data Source=(local);Initial Catalog=TestDatabase;Integrated Security=True";
+            "Data Source=(local);Initial Catalog=TestDatabase;Integrated Security=True;TrustServerCertificate=True";
 
         private const string INSERT_FORMAT =
             "USE [TestDatabase] INSERT INTO temp.[TestTable] (TestField) VALUES({0})";
@@ -394,7 +391,7 @@ namespace ServiceBrokerListener.UnitTests
                     if (args.NotificationType == SqlDependencyEx.NotificationTypes.Delete)
                     {
                         table1DeletesReceived++;
-                        table1TotalDeleted += args.Data.Element("deleted").Elements("row").Count();
+                        table1TotalDeleted += args.Data!.Element("deleted")!.Elements("row").Count();
                     }
 
                     if (args.NotificationType == SqlDependencyEx.NotificationTypes.Insert)
@@ -428,7 +425,7 @@ namespace ServiceBrokerListener.UnitTests
                         if (args.NotificationType == SqlDependencyEx.NotificationTypes.Insert)
                         {
                             table2InsertsReceived++;
-                            table2TotalInserted += args.Data.Element("inserted").Elements("row").Count();
+                            table2TotalInserted += args.Data!.Element("inserted")!.Elements("row").Count();
                         }
 
                         table2TotalNotifications++;

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -789,11 +790,7 @@ namespace SqlServiceBrokerListener
             var evnt = NotificationProcessStopped;
             if (evnt == null) return;
 
-#if NETSTANDARD
-			Task.Run(() => evnt.Invoke(this, EventArgs.Empty));
-#else
-			evnt.BeginInvoke(this, EventArgs.Empty, null, null);
-#endif
-		}
+	Task.Run(() => evnt.Invoke(this, EventArgs.Empty));
+}
 	}
 }
