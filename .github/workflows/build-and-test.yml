@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -65,13 +66,22 @@ jobs:
           --logger "trx;LogFileName=results-${{ matrix.framework }}.trx"
           --results-directory TestResults
 
-      - name: Upload test results
+      - name: Upload test results (TRX)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.framework }}
           path: TestResults/*.trx
           if-no-files-found: ignore
+
+      - name: Publish test report
+        if: always()
+        uses: dorny/test-reporter@v3
+        with:
+          name: Test results (${{ matrix.framework }})
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+          fail-on-error: "false"
 
   pack:
     name: Pack
