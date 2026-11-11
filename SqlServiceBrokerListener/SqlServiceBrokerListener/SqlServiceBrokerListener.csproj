@@ -1,11 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>		
+	<PropertyGroup>
+		<!--
+		  VERSION INTENT — read by the CI release workflow (release.yml)
+
+		  Format : <Major>.<Minor>.0-dev
+		  The CI extracts <Major>.<Minor>, queries the latest GitHub Release tag for
+		  that series, and increments the patch counter automatically.
+		  To start a new minor series, change e.g. 2.0.0-dev -> 2.1.0-dev via PR.
+		  The actual release version is injected at build time via -p:Version= and
+		  is never written back to this file by CI.
+		-->
+		<Version>3.0.0-dev</Version>
 		<AssemblyTitle>SqlServiceBrokerListener</AssemblyTitle>
 		<RootNamespace>SqlServiceBrokerListener</RootNamespace>
 		<TargetFrameworks>net10.0;net11.0</TargetFrameworks>
 		<AssemblyName>SqlServiceBrokerListener</AssemblyName>
 		<PackageId>SqlServiceBrokerListener</PackageId>
-		<Version>3.0.0-beta.2</Version>
 		<Authors>Sebastian Huebener</Authors>
 		<Copyright>Copyright © 2026 - Sebastian Huebener</Copyright>
 		<NeutralLanguage>en</NeutralLanguage>

@@ -1,0 +1,114 @@
+name: Release
+
+# Runs when a pull request into main is merged (not when it is merely closed), or manually.
+# Version logic: the csproj <Version> only provides the major.minor "intent" (for example 3.0.0-dev).
+#   main (merged PR):  next free stable patch  -> 3.0.0, 3.0.1, ...
+#   other branch:      prerelease              -> 3.0.1-<branch-slug>.0, .1, ...
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish GitHub release
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      PROJECT: SqlServiceBrokerListener/SqlServiceBrokerListener/SqlServiceBrokerListener.csproj
+      LIB_NAME: SqlServiceBrokerListener
+      RELEASE_SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.x
+
+      - name: Compute version
+        id: version
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          $intentVer = (dotnet msbuild $env:PROJECT -getProperty:Version -nologo).Trim()
+          if ($intentVer -notmatch '^(?<maj>\d+)\.(?<min>\d+)') {
+            throw "Cannot parse major.minor from '$intentVer'. Expected format: 'X.Y.0-dev'"
+          }
+          $maj = $Matches.maj; $min = $Matches.min
+          Write-Host "Intent: $intentVer -> targeting $maj.$min.*"
+
+          # A merged pull request always targets main (see the trigger filter above).
+          $onMain = ($env:EVENT_NAME -eq 'pull_request') -or ($env:GITHUB_REF -eq 'refs/heads/main')
+
+          $stable = @(gh api --paginate "repos/$env:GITHUB_REPOSITORY/releases" --jq '.[] | select(.prerelease == false and .draft == false) | .tag_name')
+          if ($LASTEXITCODE -ne 0) { throw "Could not list releases" }
+          $stable = @($stable | ForEach-Object { $_.TrimStart('v') })
+          $gitTags = @(gh api --paginate "repos/$env:GITHUB_REPOSITORY/tags" --jq '.[].name')
+          if ($LASTEXITCODE -ne 0) { throw "Could not list tags" }
+          $gitTags = @($gitTags | ForEach-Object { $_.TrimStart('v') })
+
+          $latest = $stable | Where-Object { $_ -match "^$maj\.$min\.\d+$" } |
+                      Sort-Object { [Version]$_ } -Descending | Select-Object -First 1
+          $patch = if ($latest -match "^$maj\.$min\.(?<pat>\d+)$") { [int]$Matches.pat + 1 } else { 0 }
+
+          if ($onMain) {
+            while ($gitTags -contains "$maj.$min.$patch") {
+              Write-Host "Tag v$maj.$min.$patch exists -> incrementing"; $patch++
+            }
+            $newVer       = "$maj.$min.$patch"
+            $isPrerelease = 'false'
+          }
+          else {
+            $slug = $env:BRANCH_NAME -replace '[^A-Za-z0-9]', '-' -replace '-+', '-' -replace '^-|-$', ''
+            $re   = "^$maj\.$min\.$patch-$([regex]::Escape($slug))\.(?<num>\d+)$"
+            $last = $gitTags | Where-Object { $_ -match $re } |
+                      Sort-Object { [int]([regex]::Match($_, $re).Groups['num'].Value) } -Descending |
+                      Select-Object -First 1
+            $num  = if ($last -match $re) { [int]$Matches.num + 1 } else { 0 }
+            $newVer       = "$maj.$min.$patch-$slug.$num"
+            $isPrerelease = 'true'
+          }
+
+          Write-Host "Computed version: $newVer (prerelease: $isPrerelease)"
+          "version=$newVer"             >> $env:GITHUB_OUTPUT
+          "is_prerelease=$isPrerelease" >> $env:GITHUB_OUTPUT
+
+      - name: Pack
+        run: dotnet pack "$PROJECT" -c Release -o artifacts -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          IS_PRERELEASE: ${{ steps.version.outputs.is_prerelease }}
+        run: |
+          $tag   = "v$env:VERSION"
+          $flags = @()
+          if ($env:IS_PRERELEASE -eq 'true') { $flags += '--prerelease' }
+          gh release create $tag "artifacts/$env:LIB_NAME.$env:VERSION.nupkg" "artifacts/$env:LIB_NAME.$env:VERSION.snupkg" `
+            --repo $env:GITHUB_REPOSITORY `
+            --target $env:RELEASE_SHA `
+            --title "$env:LIB_NAME $tag" `
+            --generate-notes `
+            @flags
+          if ($LASTEXITCODE -ne 0) { throw "Creating release $tag failed" }
+          "### Released $tag" >> $env:GITHUB_STEP_SUMMARY
+          "NuGet packages were attached to the GitHub release. They were **not** pushed to nuget.org." >> $env:GITHUB_STEP_SUMMARY
