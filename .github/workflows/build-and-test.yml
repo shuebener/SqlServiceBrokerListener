@@ -1,0 +1,101 @@
+name: Build and Test
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests (${{ matrix.framework }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [net10.0, net11.0]
+
+    env:
+      # Throwaway password for the disposable SQL Server container below. It is not a secret and
+      # works for pull requests from forks, which cannot read repository secrets.
+      SBL_TEST_PASSWORD: Sbl_Test_Pw_2026_x9
+      SBL_TEST_SERVER: localhost,1433
+      SBL_TEST_USER: sa
+
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Sbl_Test_Pw_2026_x9
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P $MSSQL_SA_PASSWORD -Q 'SELECT 1' -b"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+          --health-start-period 20s
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.x
+
+      - name: Build
+        run: dotnet build SqlServiceBrokerListener/SqlServiceBrokerListener.UnitTests/SqlServiceBrokerListener.UnitTests.csproj -c Release -f ${{ matrix.framework }}
+
+      - name: Test (unit + integration against the SQL Server container)
+        run: >-
+          dotnet test SqlServiceBrokerListener/SqlServiceBrokerListener.UnitTests/SqlServiceBrokerListener.UnitTests.csproj
+          -c Release -f ${{ matrix.framework }} --no-build
+          --logger "trx;LogFileName=results-${{ matrix.framework }}.trx"
+          --results-directory TestResults
+
+      - name: Upload test results (TRX)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.framework }}
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+
+      - name: Publish test report
+        if: always()
+        uses: dorny/test-reporter@v3
+        with:
+          name: Test results (${{ matrix.framework }})
+          path: TestResults/*.trx
+          reporter: dotnet-trx
+          fail-on-error: "false"
+
+  pack:
+    name: Pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.x
+
+      - name: Pack
+        run: dotnet pack SqlServiceBrokerListener/SqlServiceBrokerListener/SqlServiceBrokerListener.csproj -c Release -o artifacts
