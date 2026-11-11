@@ -11,7 +11,7 @@
 		<NeutralLanguage>en</NeutralLanguage>
 		<Title>SqlServiceBrokerListener</Title>
 		<Description>Cross-platform SQL Server Service Broker listener that streams table change notifications into your .NET code. Targets .NET 10 and .NET 11 using Microsoft.Data.SqlClient. Learn more: https://github.com/shuebener/SqlServiceBrokerListener</Description>
-		<DocumentationFile>$(TargetDir)\SqlServiceBrokerListener.xml</DocumentationFile>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<NoWarn>1701;1702;CS1591</NoWarn>
 	</PropertyGroup>
 	
